@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { usePersistentState } from './hooks/usePersistentState';
 import { 
   Home, 
   Map as MapIcon, 
@@ -39,21 +40,28 @@ type Screen = 'home' | 'map' | 'scan' | 'history' | 'profile' | 'market' | 'resu
 
 export default function App() {
   const [activeScreen, setActiveScreen] = useState<Screen>('home');
-  const [points, setPoints] = useState(1250);
-  const [walletBalance, setWalletBalance] = useState(25000);
+  const [points, setPoints] = usePersistentState<number>('eco-points', 1250);
+  const [walletBalance] = usePersistentState<number>('eco-wallet-balance', 25000);
   const [identificationResult, setIdentificationResult] = useState<WasteIdentification | null>(null);
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
   const [isScanning, setIsScanning] = useState(false);
+  const [scanError, setScanError] = useState<string | null>(null);
 
   const handleScan = async (image: string) => {
     setIsScanning(true);
+    setScanError(null);
     setCapturedImage(image);
+
     const result = await identifyWaste(image);
     setIsScanning(false);
+
     if (result) {
       setIdentificationResult(result);
       setActiveScreen('result');
+      return;
     }
+
+    setScanError('Gagal mengidentifikasi sampah. Coba ambil foto ulang dengan pencahayaan lebih baik.');
   };
 
   const renderScreen = () => {
@@ -63,7 +71,7 @@ export default function App() {
       case 'map':
         return <MapScreen onBack={() => setActiveScreen('home')} />;
       case 'scan':
-        return <ScanScreen onBack={() => setActiveScreen('home')} onCapture={handleScan} isScanning={isScanning} />;
+        return <ScanScreen onBack={() => setActiveScreen('home')} onCapture={handleScan} isScanning={isScanning} scanError={scanError} />;
       case 'result':
         return (
           <ResultScreen 
@@ -270,7 +278,7 @@ function ServiceCard({ icon, title, desc, bgColor, onClick }: { icon: React.Reac
   );
 }
 
-function ScanScreen({ onBack, onCapture, isScanning }: { onBack: () => void, onCapture: (img: string) => void, isScanning: boolean }) {
+function ScanScreen({ onBack, onCapture, isScanning, scanError }: { onBack: () => void, onCapture: (img: string) => void, isScanning: boolean, scanError: string | null }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [hasPermission, setHasPermission] = useState<boolean | null>(null);
@@ -315,7 +323,7 @@ function ScanScreen({ onBack, onCapture, isScanning }: { onBack: () => void, onC
     <div className="h-full bg-black relative flex flex-col">
       {/* Header Overlay */}
       <div className="absolute top-0 left-0 right-0 p-6 flex items-center justify-between z-10">
-        <button onClick={onBack} className="w-10 h-10 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center text-white">
+        <button aria-label="Kembali" onClick={onBack} className="w-10 h-10 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center text-white">
           <ArrowLeft size={24} />
         </button>
         <h2 className="text-white font-bold">Scan Sampah</h2>
@@ -361,6 +369,12 @@ function ScanScreen({ onBack, onCapture, isScanning }: { onBack: () => void, onC
                 <p className="text-white text-xs font-bold tracking-widest uppercase">ARAHKAN KAMERA KE SAMPAH</p>
               </div>
             </div>
+
+            {scanError && (
+              <div className="absolute bottom-16 left-6 right-6 bg-red-500/90 text-white px-4 py-3 rounded-2xl text-xs font-semibold">
+                {scanError}
+              </div>
+            )}
           </>
         )}
       </div>
@@ -368,7 +382,7 @@ function ScanScreen({ onBack, onCapture, isScanning }: { onBack: () => void, onC
       {/* Controls */}
       <div className="bg-white h-48 rounded-t-[40px] flex flex-col items-center justify-center gap-6 px-10">
         <div className="flex items-center justify-between w-full">
-          <button className="w-12 h-12 bg-slate-100 rounded-full flex items-center justify-center text-slate-600">
+          <button aria-label="Pilih gambar dari galeri" className="w-12 h-12 bg-slate-100 rounded-full flex items-center justify-center text-slate-600">
             <ImageIcon size={24} />
           </button>
           
@@ -384,7 +398,7 @@ function ScanScreen({ onBack, onCapture, isScanning }: { onBack: () => void, onC
             )}
           </button>
 
-          <button className="w-12 h-12 bg-slate-100 rounded-full flex items-center justify-center text-slate-600">
+          <button aria-label="Nyalakan senter" className="w-12 h-12 bg-slate-100 rounded-full flex items-center justify-center text-slate-600">
             <Flashlight size={24} />
           </button>
         </div>
@@ -406,7 +420,7 @@ function ResultScreen({ result, image, onBack, onFindLocation, onConfirm }: { re
     <div className="h-full bg-white flex flex-col">
       {/* Header */}
       <div className="p-6 flex items-center justify-between border-b border-slate-50">
-        <button onClick={onBack} className="w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center text-slate-600">
+        <button aria-label="Kembali" onClick={onBack} className="w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center text-slate-600">
           <ArrowLeft size={24} />
         </button>
         <h2 className="text-lg font-bold text-slate-900">Hasil Identifikasi</h2>
