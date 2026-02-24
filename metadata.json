@@ -1,0 +1,7 @@
+{
+  "name": "EcoLoka",
+  "description": "Aplikasi pengelolaan sampah cerdas dengan identifikasi AI untuk membantu daur ulang.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
